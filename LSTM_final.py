@@ -99,11 +99,13 @@ class LSTM:
 
             # Compute gradient of hidden state w.r.t. cell state
             dc = d_cell_state + dh * self.ot * (1 - self.tanh(cell_state_sequence[i]) ** 2) # 128, 1
-
+            print(d_cell_state.shape)
+            print(dh.shape)
+            print(self.ot.shape)
             # Compute gradient of gates
             dft = dc * self.prev_cell_state * self.ft * (1 - self.ft) # 128, 1
-            print(self.ft.shape)
-            print(self.prev_cell_state.shape)
+            #print(self.ft.shape)
+            #print(self.prev_cell_state.shape)
             print(dc.shape)
             print(dft.shape)
             dWf += np.dot(dft, self.concat.T)
