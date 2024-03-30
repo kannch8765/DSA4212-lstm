@@ -33,7 +33,9 @@ class LSTM:
     
     def forward(self, x):
         self.x = x # 1,10
+        print(x.shape)
 
+        print(x[:,1].shape)
         # Initialize hidden and cell states for the sequence
         hidden_state_sequence = []
         cell_state_sequence = []
