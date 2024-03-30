@@ -66,7 +66,7 @@ class LSTM:
             
         # Return the output of the last step in the sequence
         output = np.dot(self.Wy, self.hidden_state) + self.by
-        print(output)
+        #print(output)
         return output, hidden_state_sequence[-1], cell_state_sequence[-1], hidden_state_sequence, cell_state_sequence
     
     def backward(self, d_output, d_hidden_state, d_cell_state, hidden_state_sequence, cell_state_sequence, learning_rate=0.01):
