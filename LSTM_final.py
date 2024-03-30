@@ -77,8 +77,8 @@ class LSTM:
         return output, hidden_state_sequence[-1], cell_state_sequence[-1], hidden_state_sequence, cell_state_sequence
     
     def backward(self, d_output, d_hidden_state, d_cell_state, 
-                 hidden_state_sequence, cell_state_sequence, 
-                 learning_rate=0.01, l2_lambda = 0.001):
+             hidden_state_sequence, cell_state_sequence, 
+             learning_rate=0.01, l2_lambda=0.001):
         # Initialize gradients for each weight and bias
         dWf = np.zeros_like(self.Wf)
         dWi = np.zeros_like(self.Wi)
@@ -92,89 +92,78 @@ class LSTM:
         dby = np.zeros_like(self.by)
 
         # Initialize gradient for hidden state and cell state
-        dh_next = np.zeros_like(d_hidden_state) # 128, 1
+        dh_next = np.zeros_like(d_hidden_state)
         dc_next = np.zeros_like(d_cell_state)
 
         for i in reversed(range(self.x.shape[1])):
             # Compute gradients at each step
-            
+
             #  Compute gradient of output layer w.r.t. hidden state
-            dWy += np.dot(d_output, hidden_state_sequence[i].T) # 1, 128
-            dby += d_output       # 1, 1
+            dWy += np.dot(d_output, hidden_state_sequence[i].T)
+            dby += d_output
 
             # Compute gradient of hidden state w.r.t. output gate
-            #print(dh_next.shape)
-            dh = np.dot(self.Wy.T, d_output) + dh_next # 128, 1
-            #print(d_output.shape)
-            #print(self.Wy.shape)
-            do = dh * self.tanh(cell_state_sequence[i]) # 128, 1
-            #print(do.shape)
-            dot = do * self.ot * (1 - self.ot) # 128, 1
+            dh = np.dot(self.Wy.T, d_output) + dh_next
+            do = dh * self.tanh(cell_state_sequence[i])
+            dot = do * self.ot * (1 - self.ot)
 
             # Compute gradient of hidden state w.r.t. cell state
-            dc = d_cell_state + dh * self.ot * (1 - self.tanh(cell_state_sequence[i]) ** 2) # 128, 1
-            #print(d_cell_state.shape)
-            #print(dh.shape)
-            #print(self.ot.shape)
-            # Compute gradient of gates
-            dft = dc * self.prev_cell_state * self.ft * (1 - self.ft) # 128, 1
-            #print(self.ft.shape)
-            #print(self.prev_cell_state.shape)
-            #print(dc.shape)
-            #print(dft.shape)
-            dWf += np.dot(dft, self.concat.T)
-            dbf += dft
-            dprev_cell_state = dc * self.ft
-
+            dc = d_cell_state + dh * self.ot * (1 - self.tanh(cell_state_sequence[i]) ** 2)
+            dft = dc * self.prev_cell_state * self.ft * (1 - self.ft)
             dit = dc * self.cct * self.it * (1 - self.it)
-            dWi += np.dot(dit, self.concat.T)
-            dbi += dit
             dcct = dc * self.it
             dcctt = dcct * (1 - self.cct ** 2)
-            dWc += np.dot(dcctt, self.concat.T)
-            dbc += dcctt
 
             # Compute gradient of forget gate
             df = dc * self.prev_cell_state * self.ft * (1 - self.ft)
 
             # Compute gradient of input gate
             di = dc * self.cct * self.it * (1 - self.it)
-            '''
-            print(df.shape)
-            print(di.shape)
-            print(self.Wf[:, :self.hidden_size].T.shape)
-            print(self.Wf.shape)
-            '''
+
             # Compute gradient of previous hidden state
             dprev_hidden_state = np.dot(df.T, self.Wf[:, :self.hidden_size]) \
                             + np.dot(di.T, self.Wi[:, :self.hidden_size]) \
                             + np.dot(do.T, self.Wo[:, :self.hidden_size]) \
                             + np.dot(dcct.T, self.Wc[:, :self.hidden_size])
-            
+
             # Compute gradient of previous cell state
             dprev_cell_state += dc * self.ft
 
-            # Update weights and biases using gradients & learning rate
-            self.Wf -= learning_rate * (dWf + l2_lambda * self.Wf)
-            self.Wi -= learning_rate * (dWi + l2_lambda * self.Wi)
-            self.Wo -= learning_rate * (dWo + l2_lambda * self.Wo)
-            self.Wc -= learning_rate * (dWc + l2_lambda * self.Wc)
-            self.Wy -= learning_rate * (dWy + l2_lambda * self.Wy)
+            # Accumulate gradients for all time steps
+            dWf += np.dot(dft, self.concat.T)
+            dWi += np.dot(dit, self.concat.T)
+            dWc += np.dot(dcctt, self.concat.T)
 
-            self.bf -= learning_rate * dbf
-            self.bi -= learning_rate * dbi
-            self.bo -= learning_rate * dbo
-            self.bc -= learning_rate * dbc
-            self.by -= learning_rate * dby
+            # Update hidden state and cell state for next time step
+            dh_next = dprev_hidden_state
+            dc_next = dprev_cell_state
 
-            # Update hidden state and cell state
-            self.prev_hidden_state = hidden_state_sequence[i]
-            self.prev_cell_state = cell_state_sequence[i]
+        # Update weights and biases using gradients & learning rate
+        self.Wf -= learning_rate * (dWf + l2_lambda * self.Wf)
+        self.Wi -= learning_rate * (dWi + l2_lambda * self.Wi)
+        self.Wo -= learning_rate * (dWo + l2_lambda * self.Wo)
+        self.Wc -= learning_rate * (dWc + l2_lambda * self.Wc)
+        self.Wy -= learning_rate * (dWy + l2_lambda * self.Wy)
 
-            dprev_hidden_state = dh_next
-            dprev_cell_state = dc_next
+        self.bf -= learning_rate * dbf
+        self.bi -= learning_rate * dbi
+        self.bo -= learning_rate * dbo
+        self.bc -= learning_rate * dbc
+        self.by -= learning_rate * dby
 
-        return dprev_hidden_state, dprev_cell_state
+        # Update parameters using Adam optimizer
+        self.adam_optimizer(self.Wf, dWf, 'Wf')
+        self.adam_optimizer(self.Wi, dWi, 'Wi')
+        self.adam_optimizer(self.Wo, dWo, 'Wo')
+        self.adam_optimizer(self.Wc, dWc, 'Wc')
+        self.adam_optimizer(self.Wy, dWy, 'Wy')
+        self.adam_optimizer(self.bf, dbf, 'bf')
+        self.adam_optimizer(self.bi, dbi, 'bi')
+        self.adam_optimizer(self.bo, dbo, 'bo')
+        self.adam_optimizer(self.bc, dbc, 'bc')
+        self.adam_optimizer(self.by, dby, 'by')
+
+        return dh_next, dc_next
     
     def adam_optimizer(self, param, grad, param_name):
         self.t += 1
