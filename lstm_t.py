@@ -32,14 +32,16 @@ class LSTM_T:
         return np.tanh(x)
 
     def forward(self, x):
+        self.x = x
+
         # Initialize hidden and cell states for the sequence
         hidden_state_sequence = []
         cell_state_sequence = []
 
-        for i in range(x.shape[1]):  # Iterate over the sequence length
+        for i in range(x.shape[2]):  # Iterate over the sequence length
             # Reshape and concatenate previous hidden state
             reshaped_prev_hidden_state = self.prev_hidden_state.reshape(-1, 1)
-            self.concat = np.column_stack((reshaped_prev_hidden_state, x[:, i:i+1]))
+            self.concat = np.column_stack((reshaped_prev_hidden_state, x[:, :, i]))
 
             # Compute gates
             self.ft = self.sigmoid(np.dot(self.Wf, self.concat) + self.bf)
@@ -62,6 +64,7 @@ class LSTM_T:
         # Return the output of the last step in the sequence
         output = np.dot(self.Wy, self.hidden_state) + self.by
         return output, hidden_state_sequence[-1], cell_state_sequence[-1]
+
 
     def backward(self, d_output, d_hidden_state, d_cell_state, learning_rate):
         dWy = np.dot(d_output, self.hidden_state.T)
