@@ -1,10 +1,16 @@
 import numpy as np
 
 class LSTM:
-    def __init__(self, input_size, hidden_size, output_size):
+    def __init__(self, input_size, hidden_size, output_size,
+                 learning_rate=0.001, beta1=0.9, beta2=0.999, epsilon=1e-8):
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.output_size = output_size
+
+        self.learning_rate = learning_rate
+        self.beta1 = beta1
+        self.beta2 = beta2
+        self.epsilon = epsilon
 
         # Initialize weights
         self.Wf = np.random.randn(hidden_size, input_size + hidden_size)
@@ -93,19 +99,19 @@ class LSTM:
             dby += d_output       # 1, 1
 
             # Compute gradient of hidden state w.r.t. output gate
-            print(dh_next.shape)
+            #print(dh_next.shape)
             dh = np.dot(self.Wy.T, d_output) + dh_next # 128, 1
-            print(d_output.shape)
-            print(self.Wy.shape)
+            #print(d_output.shape)
+            #print(self.Wy.shape)
             do = dh * self.tanh(cell_state_sequence[i]) # 128, 1
-            print(do.shape)
+            #print(do.shape)
             dot = do * self.ot * (1 - self.ot) # 128, 1
 
             # Compute gradient of hidden state w.r.t. cell state
             dc = d_cell_state + dh * self.ot * (1 - self.tanh(cell_state_sequence[i]) ** 2) # 128, 1
-            print(d_cell_state.shape)
-            print(dh.shape)
-            print(self.ot.shape)
+            #print(d_cell_state.shape)
+            #print(dh.shape)
+            #print(self.ot.shape)
             # Compute gradient of gates
             dft = dc * self.prev_cell_state * self.ft * (1 - self.ft) # 128, 1
             #print(self.ft.shape)
@@ -165,6 +171,17 @@ class LSTM:
             dprev_cell_state = dc_next
 
         return dprev_hidden_state, dprev_cell_state
+    
+    def adam_optimizer(self, param, grad, param_name):
+        self.t += 1
+        if param_name not in self.m:
+            self.m[param_name] = np.zeros_like(param)
+            self.v[param_name] = np.zeros_like(param)
+        self.m[param_name] = self.beta1 * self.m[param_name] + (1 - self.beta1) * grad
+        self.v[param_name] = self.beta2 * self.v[param_name] + (1 - self.beta2) * (grad ** 2)
+        m_hat = self.m[param_name] / (1 - self.beta1 ** self.t)
+        v_hat = self.v[param_name] / (1 - self.beta2 ** self.t)
+        param -= self.learning_rate * m_hat / (np.sqrt(v_hat) + self.epsilon)
     
     def get_params(self):
         return self.Wf, self.Wi, self.Wo, self.Wc, self.Wy, self.bf, self.bi, self.bo, self.bc, self.by
