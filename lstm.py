@@ -30,18 +30,38 @@ class LSTM:
     def forward(self, x):
         self.x = x
 
-        self.concat = np.row_stack((self.prev_hidden_state, x))
-        self.ft = self.sigmoid(np.dot(self.Wf, self.concat) + self.bf)
-        self.it = self.sigmoid(np.dot(self.Wi, self.concat) + self.bi)
-        self.ot = self.sigmoid(np.dot(self.Wo, self.concat) + self.bo)
-        self.cct = self.tanh(np.dot(self.Wc, self.concat) + self.bc)
+        # Initialize hidden and cell states for the sequence
+        hidden_state_sequence = []
+        cell_state_sequence = []
 
-        self.cell_state = self.ft * self.prev_cell_state + self.it * self.cct
-        self.hidden_state = self.ot * self.tanh(self.cell_state)
+        for i in range(x.shape[1]):  # Iterate over the sequence length
+            # Reshape and concatenate previous hidden state
+            reshaped_prev_hidden_state = self.prev_hidden_state.reshape(-1, 1)
+            self.concat = np.column_stack((reshaped_prev_hidden_state, x[:, i:i+1]))
 
-        self.output = np.dot(self.Wy, self.hidden_state) + self.by
+            # Compute gates
+            self.ft = self.sigmoid(np.dot(self.Wf, self.concat) + self.bf)
+            self.it = self.sigmoid(np.dot(self.Wi, self.concat) + self.bi)
+            self.ot = self.sigmoid(np.dot(self.Wo, self.concat) + self.bo)
+            self.cct = self.tanh(np.dot(self.Wc, self.concat) + self.bc)
 
-        return self.output, self.hidden_state, self.cell_state
+            # Update cell state and hidden state
+            self.cell_state = self.ft * self.prev_cell_state + self.it * self.cct
+            self.hidden_state = self.ot * self.tanh(self.cell_state)
+
+            # Save hidden and cell states for the sequence
+            hidden_state_sequence.append(self.hidden_state)
+            cell_state_sequence.append(self.cell_state)
+
+            # Update previous hidden state and cell state for next iteration
+            self.prev_hidden_state = self.hidden_state
+            self.prev_cell_state = self.cell_state
+
+        # Return the output of the last step in the sequence
+        output = np.dot(self.Wy, self.hidden_state) + self.by
+        return output, hidden_state_sequence[-1], cell_state_sequence[-1]
+
+
 
     def backward(self, d_output, d_hidden_state, d_cell_state, learning_rate):
         dWy = np.dot(d_output, self.hidden_state.T)
