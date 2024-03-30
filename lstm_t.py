@@ -40,7 +40,7 @@ class LSTM_T:
         # Update hidden state
         h = o * tanh(c)
 
-        return h, c, o
+        return h, c, o, f, i, c_hat, c, o, tanh(c)
     
     def backward(self, x, h_prev, c_prev, dh_next, dc_next, f, i, c_hat, c, o, tanh_c):
         # Concatenate input and previous hidden state
