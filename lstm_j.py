@@ -30,18 +30,18 @@ class LSTM_JAX:
     def tanh(self, x):
         return jnp.tanh(x)
 
-    def forward(self, x):
+    def forward(self, x, h_prev, c_prev):
         # Initialize hidden and cell states for the sequence
         hidden_state_sequence = []
         cell_state_sequence = []
 
-        prev_hidden_state = jnp.zeros((self.hidden_size, x.shape[1]))  # Initialize for each example in the batch
-        prev_cell_state = jnp.zeros((self.hidden_size, x.shape[1]))    # Initialize for each example in the batch
+        prev_hidden_state = h_prev
+        prev_cell_state = c_prev
 
         for i in range(x.shape[0]):  # Iterate over the sequence length
             # Reshape and concatenate previous hidden state
-            reshaped_prev_hidden_state = prev_hidden_state.reshape(-1, x.shape[1])
-            concat = jnp.column_stack((reshaped_prev_hidden_state, x[i:i+1]))
+            reshaped_prev_hidden_state = prev_hidden_state.reshape(-1, 1)
+            concat = jnp.concatenate((reshaped_prev_hidden_state, x[i:i+1]), axis=0)
 
             # Compute gates
             ft = self.sigmoid(jnp.dot(self.Wf, concat) + self.bf)
@@ -64,6 +64,7 @@ class LSTM_JAX:
         # Return the output of the last step in the sequence
         output = jnp.dot(self.Wy, hidden_state) + self.by
         return output, hidden_state_sequence, cell_state_sequence
+
     
     def backward(self, x, y, hidden_state_sequence, cell_state_sequence, learning_rate, clip_value):
         # Initialize gradients
