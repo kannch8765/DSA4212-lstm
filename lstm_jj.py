@@ -69,7 +69,9 @@ class LSTM:
         #print(output)
         return output, hidden_state_sequence[-1], cell_state_sequence[-1], hidden_state_sequence, cell_state_sequence
     
-    def backward(self, d_output, d_hidden_state, d_cell_state, hidden_state_sequence, cell_state_sequence, learning_rate=0.01):
+    def backward(self, d_output, d_hidden_state, d_cell_state, 
+                 hidden_state_sequence, cell_state_sequence, 
+                 learning_rate=0.01, l2_lambda = 0.01):
         # Initialize gradients for each weight and bias
         dWf = np.zeros_like(self.Wf)
         dWi = np.zeros_like(self.Wi)
@@ -136,11 +138,11 @@ class LSTM:
             dprev_cell_state += dc * self.ft
 
             # Update weights and biases using gradients & learning rate
-            self.Wf -= learning_rate * dWf
-            self.Wi -= learning_rate * dWi
-            self.Wo -= learning_rate * dWo
-            self.Wc -= learning_rate * dWc
-            self.Wy -= learning_rate * dWy
+            self.Wf -= learning_rate * (dWf + l2_lambda * self.Wf)
+            self.Wi -= learning_rate * (dWi + l2_lambda * self.Wi)
+            self.Wo -= learning_rate * (dWo + l2_lambda * self.Wo)
+            self.Wc -= learning_rate * (dWc + l2_lambda * self.Wc)
+            self.Wy -= learning_rate * (dWy + l2_lambda * self.Wy)
 
             self.bf -= learning_rate * dbf
             self.bi -= learning_rate * dbi
