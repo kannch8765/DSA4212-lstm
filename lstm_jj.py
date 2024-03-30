@@ -122,6 +122,7 @@ class LSTM:
             print(df.shape)
             print(di.shape)
             print(self.Wf[:, :self.hidden_size].T.shape)
+            print(self.Wf.shape)
             # Compute gradient of previous hidden state
             dprev_hidden_state = np.dot(df, self.Wf[:, :self.hidden_size].T) \
                             + np.dot(di, self.Wi[:, :self.hidden_size].T) \
