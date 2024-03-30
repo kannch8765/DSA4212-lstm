@@ -89,7 +89,7 @@ class LSTM_JAX:
             loss += self.loss(x[i:i+1], y[:, i:i+1])
 
             # Compute gradients for the current step
-            d_output = 2 * (self.forward(x[i:i+1])[0] - y[:, i:i+1])
+            d_output = 2 * (self.forward(x[i:i+1])[0] - y[:, i:i+1], jnp.zeros((self.hidden_size, 1),jnp.zeros((self.hidden_size, 1))))
             dh_next = d_output @ self.Wy.T + dprev_hidden_state
             dc_next = dprev_cell_state
 
