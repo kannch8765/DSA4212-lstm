@@ -28,6 +28,10 @@ class LSTM:
         self.prev_hidden_state = np.random.randn(hidden_size, 1)
         self.prev_cell_state = np.random.randn(hidden_size, 1)
 
+        self.m = {}
+        self.v = {}
+        self.t = 0
+
     def sigmoid(self, x):
         return 1 / (1 + np.exp(-x))
     
@@ -116,8 +120,8 @@ class LSTM:
             dft = dc * self.prev_cell_state * self.ft * (1 - self.ft) # 128, 1
             #print(self.ft.shape)
             #print(self.prev_cell_state.shape)
-            print(dc.shape)
-            print(dft.shape)
+            #print(dc.shape)
+            #print(dft.shape)
             dWf += np.dot(dft, self.concat.T)
             dbf += dft
             dprev_cell_state = dc * self.ft
