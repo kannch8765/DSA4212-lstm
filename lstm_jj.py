@@ -46,7 +46,7 @@ class LSTM:
             print(reshaped_prev_hidden_state.shape)
             print(x[:,i].reshape(1,1).shape)
             self.concat = np.concatenate((reshaped_prev_hidden_state, x[:, i:i+1].reshape(1,1)),axis=0) # 
-
+            print(self.concat.shape)
             # Compute gates
             self.ft = self.sigmoid(np.dot(self.Wf, self.concat) + self.bf)
             self.it = self.sigmoid(np.dot(self.Wi, self.concat) + self.bi)
