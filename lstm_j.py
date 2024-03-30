@@ -95,7 +95,7 @@ class LSTM_JAX:
             dc_next = dprev_cell_state
 
             reshaped_prev_hidden_state = self.prev_hidden_state.reshape(-1, 1)
-            concat = jnp.column_stack((reshaped_prev_hidden_state, x[:, i:i+1]))
+            concat = jnp.column_stack((reshaped_prev_hidden_state.T, x[:, i:i+1]))
 
             # Compute gate derivatives
             ft = self.sigmoid(jnp.dot(self.Wf, concat) + self.bf)
