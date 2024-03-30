@@ -43,10 +43,10 @@ class LSTM:
         for i in range(x.shape[1]):  # Iterate over the sequence length
             # Reshape and concatenate previous hidden state
             reshaped_prev_hidden_state = self.prev_hidden_state.reshape(-1, 1) # 1, 128
-            print(reshaped_prev_hidden_state.shape)
-            print(x[:,i].reshape(1,1).shape)
+            #print(reshaped_prev_hidden_state.shape)
+            #print(x[:,i].reshape(1,1).shape)
             self.concat = np.concatenate((reshaped_prev_hidden_state, x[:, i:i+1].reshape(1,1)),axis=0) # 
-            print(self.concat.shape)
+            #print(self.concat.shape)
             # Compute gates
             self.ft = self.sigmoid(np.dot(self.Wf, self.concat) + self.bf)
             self.it = self.sigmoid(np.dot(self.Wi, self.concat) + self.bi)
@@ -146,3 +146,75 @@ class LSTM:
             # Update hidden state and cell state
             self.prev_hidden_state = hidden_state_sequence[i]
             self.prev_cell_state = cell_state_sequence[i]
+
+            dprev_hidden_state = dh_next
+            dprev_cell_state = dc_next
+
+def backward1(self, d_output, hidden_state_sequence, cell_state_sequence, learning_rate=0.01, clip_value=1):
+    # Initialize gradients for each weight and bias
+    grads = {'Wf': jnp.zeros_like(self.Wf), 'Wi': jnp.zeros_like(self.Wi),
+             'Wo': jnp.zeros_like(self.Wo), 'Wc': jnp.zeros_like(self.Wc),
+             'Wy': jnp.zeros_like(self.Wy), 'bf': jnp.zeros_like(self.bf),
+             'bi': jnp.zeros_like(self.bi), 'bo': jnp.zeros_like(self.bo),
+             'bc': jnp.zeros_like(self.bc), 'by': jnp.zeros_like(self.by)}
+
+    # Initialize gradient for hidden state and cell state
+    d_hidden_state = jnp.zeros_like(hidden_state_sequence[0])
+    d_cell_state = jnp.zeros_like(cell_state_sequence[0])
+
+    # Loop through each time step in reverse order to calculate gradients
+    for t in reversed(range(len(hidden_state_sequence))):
+        # Gradient of loss w.r.t. output
+        d_output_t = d_output if t == len(hidden_state_sequence) - 1 else 0
+
+        # Gradient of loss w.r.t. hidden state
+        d_hidden_state_total = d_output_t + d_hidden_state
+
+        # Gradient of loss w.r.t. cell state
+        d_cell_state_total = self.Wo @ d_hidden_state_total * self.sigmoid(cell_state_sequence[t])
+
+        # Gradient of loss w.r.t. forget gate
+        dft = d_cell_state_total * cell_state_sequence[t-1] * self.sigmoid(hidden_state_sequence[t][:self.hidden_size]) * (1 - self.sigmoid(hidden_state_sequence[t][:self.hidden_size]))
+
+        # Gradient of loss w.r.t. input gate
+        dit = d_cell_state_total * self.tanh(cell_state_sequence[t]) * self.sigmoid(hidden_state_sequence[t][self.hidden_size:]) * (1 - self.sigmoid(hidden_state_sequence[t][self.hidden_size:]))
+
+        # Gradient of loss w.r.t. cell state
+        dcct = d_cell_state_total * self.sigmoid(hidden_state_sequence[t][self.hidden_size:]) * (1 - self.tanh(cell_state_sequence[t]) ** 2)
+
+        # Gradient of loss w.r.t. previous hidden state
+        d_hidden_state = self.Wf[:, :self.hidden_size].T @ dft + self.Wi[:, :self.hidden_size].T @ dit + self.Wc[:, :self.hidden_size].T @ dcct
+
+        # Gradient of loss w.r.t. previous cell state
+        d_cell_state = d_cell_state_total * self.sigmoid(hidden_state_sequence[t][:self.hidden_size])
+
+        # Gradient of loss w.r.t. weights and biases
+        grads['Wf'] += jnp.dot(dft, jnp.hstack([cell_state_sequence[t-1], self.x]).T)
+        grads['Wi'] += jnp.dot(dit, jnp.hstack([cell_state_sequence[t-1], self.x]).T)
+        grads['Wo'] += jnp.dot(d_output_t * self.tanh(cell_state_sequence[t]) * self.sigmoid(hidden_state_sequence[t][self.hidden_size:]) * (1 - self.sigmoid(hidden_state_sequence[t][self.hidden_size:])), jnp.hstack([cell_state_sequence[t-1], self.x]).T)
+        grads['Wc'] += jnp.dot(dcct * self.sigmoid(hidden_state_sequence[t][self.hidden_size:]) * (1 - self.tanh(cell_state_sequence[t]) ** 2), jnp.hstack([cell_state_sequence[t-1], self.x]).T)
+        grads['bf'] += dft
+        grads['bi'] += dit
+        grads['bo'] += d_output_t * self.tanh(cell_state_sequence[t]) * self.sigmoid(hidden_state_sequence[t][self.hidden_size:]) * (1 - self.sigmoid(hidden_state_sequence[t][self.hidden_size:]))
+        grads['bc'] += dcct * self.sigmoid(hidden_state_sequence[t][self.hidden_size:]) * (1 - self.tanh(cell_state_sequence[t]) ** 2)
+        grads['by'] += d_output_t
+
+    # Clip gradients to avoid exploding gradients
+    for key in grads.keys():
+        grads[key] = jnp.clip(grads[key], -clip_value, clip_value)
+
+    # Update parameters using gradients and learning rate
+    self.Wf -= learning_rate * grads['Wf']
+    self.Wi -= learning_rate * grads['Wi']
+    self.Wo -= learning_rate * grads['Wo']
+    self.Wc -= learning_rate * grads['Wc']
+    self.Wy -= learning_rate * grads['Wy']
+
+    self.bf -= learning_rate * grads['bf']
+    self.bi -= learning_rate * grads['bi']
+    self.bo -= learning_rate * grads['bo']
+    self.bc -= learning_rate * grads['bc']
+    self.by -= learning_rate * grads['by']
+
+    # Return gradients for hidden state and cell state for next iteration
+    return d_hidden_state, d_cell_state
