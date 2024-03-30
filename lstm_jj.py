@@ -4,99 +4,130 @@ import jax
 
 class LSTM:
     #define lstm cell using jnp, enabling gradient descent
-    def __init__(self, input_size, hidden_size):
+    def __init__(self, input_size, hidden_size, output_size):
         self.input_size = input_size
         self.hidden_size = hidden_size
+        self.output_size = output_size
 
-        # Weights and biases
-        self.W_f = np.random.randn(input_size + hidden_size, hidden_size)  # Forget gate
-        self.b_f = np.zeros((1, hidden_size))
+        # Initialize weights
+        self.Wf = np.random.randn(hidden_size, input_size + hidden_size)
+        self.Wi = np.random.randn(hidden_size, input_size + hidden_size)
+        self.Wo = np.random.randn(hidden_size, input_size + hidden_size)
+        self.Wc = np.random.randn(hidden_size, input_size + hidden_size)
+        self.Wy = np.random.randn(output_size, hidden_size)
+        self.bf = np.zeros((hidden_size, 1))
+        self.bi = np.zeros((hidden_size, 1))
+        self.bo = np.zeros((hidden_size, 1))
+        self.bc = np.zeros((hidden_size, 1))
+        self.by = np.zeros((output_size, 1))
 
-        self.W_i = np.random.randn(input_size + hidden_size, hidden_size)  # Input gate
-        self.b_i = np.zeros((1, hidden_size))
-
-        self.W_c = np.random.randn(input_size + hidden_size, hidden_size)  # Candidate values
-        self.b_c = np.zeros((1, hidden_size))
-
-        self.W_o = np.random.randn(input_size + hidden_size, hidden_size)  # Output gate
-        self.b_o = np.zeros((1, hidden_size))
+        # Initialize previous hidden state and cell state
+        self.prev_hidden_state = np.zeros((hidden_size, 1))
+        self.prev_cell_state = np.zeros((hidden_size, 1))
 
     def sigmoid(self, x):
-        return 1 / (1 + jnp.exp(-x))
+        return 1 / (1 + np.exp(-x))
     
     def tanh(self, x):
-        return jnp.tanh(x)
+        return np.tanh(x)
     
-    def loss(self, y, y_pred):
-        return jnp.mean(jnp.square(y - y_pred))
+    def forward(self, x):
+        self.x = x
+
+        # Initialize hidden and cell states for the sequence
+        hidden_state_sequence = []
+        cell_state_sequence = []
+
+        for i in range(x.shape[1]):  # Iterate over the sequence length
+            # Reshape and concatenate previous hidden state
+            reshaped_prev_hidden_state = self.prev_hidden_state.reshape(-1, 1)
+            self.concat = np.column_stack((reshaped_prev_hidden_state, x[:, i:i+1]))
+
+            # Compute gates
+            self.ft = self.sigmoid(np.dot(self.Wf, self.concat) + self.bf)
+            self.it = self.sigmoid(np.dot(self.Wi, self.concat) + self.bi)
+            self.ot = self.sigmoid(np.dot(self.Wo, self.concat) + self.bo)
+            self.cct = self.tanh(np.dot(self.Wc, self.concat) + self.bc)
+
+            # Update cell state and hidden state
+            self.cell_state = self.ft * self.prev_cell_state + self.it * self.cct
+            self.hidden_state = self.ot * self.tanh(self.cell_state)
+
+            # Save hidden and cell states for the sequence
+            hidden_state_sequence.append(self.hidden_state)
+            cell_state_sequence.append(self.cell_state)
+
+            # Update previous hidden state and cell state for next iteration
+            self.prev_hidden_state = self.hidden_state
+            self.prev_cell_state = self.cell_state
+
+        # Return the output of the last step in the sequence
+        output = np.dot(self.Wy, self.hidden_state) + self.by
+        return output, hidden_state_sequence[-1], cell_state_sequence[-1]
     
-    def forward(self, x, h_prev, c_prev):     
-        # Concatenate input and previous hidden state
-        concat_input = jnp.concatenate((h_prev, x), axis=1)
+    def backward(self, dh_next, dc_next, f, i, c_hat, c, o, tanh_c):
+        # Initialize gradients for each parameter
+        dWf = np.zeros_like(self.Wf)
+        dWi = np.zeros_like(self.Wi)
+        dWo = np.zeros_like(self.Wo)
+        dWc = np.zeros_like(self.Wc)
+        dWy = np.zeros_like(self.Wy)
+        dbf = np.zeros_like(self.bf)
+        dbi = np.zeros_like(self.bi)
+        dbo = np.zeros_like(self.bo)
+        dbc = np.zeros_like(self.bc)
+        dby = np.zeros_like(self.by)
+        dh_prev = np.zeros_like(dh_next)
+        dc_prev = np.zeros_like(dc_next)
 
-        # Forget gate
-        f = self.sigmoid(jnp.dot(concat_input, self.W_f) + self.b_f)
+        for t in reversed(range(self.x.shape[1])):
+            hidden_state_sequence = []  # Define hidden_state_sequence variable
+            for t in reversed(range(self.x.shape[1])):
+                reshaped_prev_hidden_state = self.prev_hidden_state.reshape(-1, 1)
+                concat = np.column_stack((reshaped_prev_hidden_state, self.x[:, t:t+1]))
 
-        # Input gate
-        i = self.sigmoid(jnp.dot(concat_input, self.W_i) + self.b_i)
+                # Compute the gradient of the output layer w.r.t. the hidden state
+                dWy += np.dot(dh_next, hidden_state_sequence[t].T)
+                dby += dh_next
 
-        # Candidate values
-        c_hat = self.tanh(jnp.dot(concat_input, self.W_c) + self.b_c)
+                # Compute the gradient of the hidden state w.r.t. the output gate
+                dh = np.dot(self.Wy.T, dh_next) + dh_prev
+                do = dh * tanh_c
+                dot = do * o * (1 - o)
 
-        # Update cell state
-        c = f * c_prev + i * c_hat
+                # Compute the gradient of the cell state and candidate values
+                dc = dc_next + dh * o * (1 - tanh_c ** 2)
+                dcct = dc * i
+            dcct = dcct * (1 - c_hat ** 2)
 
-        # Output gate
-        o = self.sigmoid(jnp.dot(concat_input, self.W_o) + self.b_o)
+            # Compute the gradient of the input gate
+            di = dc * c_hat
+            dii = di * i * (1 - i)
 
-        # Update hidden state
-        h = o * self.tanh(c)
+            # Define c_prev
+            c_prev = self.prev_cell_state
 
-        return h, c, o, f, i, c_hat, c, o, self.tanh(c)
-    
-    def backward(self, x, h_prev, c_prev, dh_next, dc_next, f, i, c_hat, c, o, tanh_c, learning_rate=0.01):
-        # Gradient of loss w.r.t. output gate weights and biases
-        
-        concat_input = jnp.concatenate((h_prev, x), axis=1)
-        dW_o = jnp.dot(concat_input.T, dh_next * tanh_c * o * (1 - o))
-        db_o = jnp.sum(dh_next * tanh_c * o * (1 - o), axis=0, keepdims=True)
+            # Compute the gradient of the forget gate
+            df = dc * c_prev
+            dff = df * f * (1 - f)
 
-        # Gradient of loss w.r.t. cell state
-        d_c = dh_next * o * (1 - tanh_c ** 2) + dc_next
+            # Compute the gradient of the cell state
+            dc_prev = dc * f
 
-        # Gradient of loss w.r.t. input gate weights and biases
-        dW_i = jnp.dot(concat_input.T, d_c * i * (1 - i))
-        db_i = jnp.sum(d_c * i * (1 - i), axis=0, keepdims=True)
+            # Compute the gradients of the gates
+            dWf += np.dot(dff, concat.T)
+            dbf += dff
+            dWi += np.dot(dii, concat.T)
+            dbi += dii
+            dWo += np.dot(dot, concat.T)
+            dbo += dot
+            dWc += np.dot(dcct, concat.T)
+            dbc += dcct
 
-        # Gradient of loss w.r.t. candidate values weights and biases
-        dW_c = jnp.dot(concat_input.T, d_c * (1 - c_hat ** 2))
-        db_c = jnp.sum(d_c * (1 - c_hat ** 2), axis=0, keepdims=True)
+            # Compute the gradient of the input
+            dx = np.dot(df, self.Wf[:, :self.hidden_size].T) + np.dot(di, self.Wi[:, :self.hidden_size].T) + np.dot(do, self.Wo[:, :self.hidden_size].T) + np.dot(dcct, self.Wc[:, :self.hidden_size].T)
 
-        # Gradient of loss w.r.t. forget gate weights and biases
-        dW_f = jnp.dot(concat_input.T, d_c * c_prev * (1 - f))
-        db_f = jnp.sum(d_c * c_prev * (1 - f), axis=0, keepdims=True)
+            # Compute the gradient of the previous hidden state
+            dh_prev = np.dot(df, self.Wf[:, self.hidden_size:].T) + np.dot(di, self.Wi[:, self.hidden_size:].T) + np.dot(do, self.Wo[:, self.hidden_size:].T) + np.dot(dcct, self.Wc[:, self.hidden_size:].T)
 
-        # Compute gradients of loss w.r.t. concatenated input
-        d_concat_input = jnp.dot(d_c, self.W_c.T)
-        d_concat_input += jnp.dot(dW_o, self.W_o.T)
-        d_concat_input += jnp.dot(dW_f, self.W_f.T)
-        d_concat_input += jnp.dot(dW_i, self.W_i.T)
-
-        # Extract gradients of loss w.r.t. previous hidden state and input
-        d_h_prev = d_concat_input[:, :self.hidden_size]
-        d_x = d_concat_input[:, self.hidden_size:]
-
-        # Update weights and biases
-        self.W_f -= learning_rate * dW_f
-        self.b_f -= learning_rate * db_f
-
-        self.W_i -= learning_rate * dW_i
-        self.b_i -= learning_rate * db_i
-
-        self.W_c -= learning_rate * dW_c
-        self.b_c -= learning_rate * db_c
-
-        self.W_o -= learning_rate * dW_o
-        self.b_o -= learning_rate * db_o
-
-        return d_h_prev, d_x
+        return dx, dh_prev, dc_prev, dWf, dbf, dWi, dbi, dWo, dbo, dWc, dbc, dWy, dby
