@@ -20,9 +20,9 @@ class LSTM_JAX:
         self.bc = jnp.zeros((hidden_size, 1))
         self.by = jnp.zeros((output_size, 1))
 
-        # Initialize previous hidden state and cell state
-        self.prev_hidden_state = jax.nn.initializers.orthogonal()((hidden_size, 1))
-        self.prev_cell_state = jax.nn.initializers.orthogonal()((hidden_size, 1))
+        key, subkey = jax.random.split(key)
+        self.prev_hidden_state = jax.nn.initializers.orthogonal()(subkey, (hidden_size, 1))
+        self.prev_cell_state = jax.nn.initializers.orthogonal()(subkey, (hidden_size, 1))
 
     def sigmoid(self, x):
         return 1 / (1 + jnp.exp(-x))
