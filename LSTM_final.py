@@ -1,9 +1,6 @@
 import numpy as np
-import jax.numpy as jnp
-import jax
 
 class LSTM:
-    #define lstm cell using jnp, enabling gradient descent
     def __init__(self, input_size, hidden_size, output_size):
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -85,26 +82,30 @@ class LSTM:
         dby = np.zeros_like(self.by)
 
         # Initialize gradient for hidden state and cell state
-        dh_next = np.zeros_like(d_hidden_state)
+        dh_next = np.zeros_like(d_hidden_state) # 128, 1
         dc_next = np.zeros_like(d_cell_state)
 
         for i in reversed(range(self.x.shape[1])):
             # Compute gradients at each step
             
             #  Compute gradient of output layer w.r.t. hidden state
-            dWy += np.dot(d_output, hidden_state_sequence[i].T)
-            dby += d_output
+            dWy += np.dot(d_output, hidden_state_sequence[i].T) # 1, 128
+            dby += d_output       # 1, 1
 
             # Compute gradient of hidden state w.r.t. output gate
-            dh = np.dot(self.Wy.T, d_output) + dh_next
-            do = dh * self.tanh(cell_state_sequence[i])
-            dot = do * self.ot * (1 - self.ot)
+            dh = np.dot(self.Wy.T, d_output) + dh_next # 128, 1
+            do = dh * self.tanh(cell_state_sequence[i]) # 128, 1
+            dot = do * self.ot * (1 - self.ot) # 128, 1
 
             # Compute gradient of hidden state w.r.t. cell state
-            dc = d_cell_state + dh * self.ot * (1 - self.tanh(cell_state_sequence[i]) ** 2)
+            dc = d_cell_state + dh * self.ot * (1 - self.tanh(cell_state_sequence[i]) ** 2) # 128, 1
 
             # Compute gradient of gates
-            dft = dc * self.prev_cell_state * self.ft * (1 - self.ft)
+            dft = dc * self.prev_cell_state * self.ft * (1 - self.ft) # 128, 1
+            print(self.ft.shape)
+            print(self.prev_cell_state.shape)
+            print(dc.shape)
+            print(dft.shape)
             dWf += np.dot(dft, self.concat.T)
             dbf += dft
             dprev_cell_state = dc * self.ft
@@ -165,8 +166,3 @@ class LSTM:
     def set_params(self, params):
         self.Wf, self.Wi, self.Wo, self.Wc, self.Wy, self.bf, self.bi, self.bo, self.bc, self.by = params
 
-def train_val_split(data, train_ratio=0.8):
-    split_index = int(len(data) * train_ratio)
-    training_data = data[:split_index]
-    validation_data = data[split_index:]
-    return training_data, validation_data

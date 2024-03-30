@@ -6,7 +6,7 @@ class LSTM:
         self.output_size = output_size
 
         # Initialize weights
-        self.Wf = np.random.randn(hidden_size, input_size + hidden_size)
+        self.Wf = np.random.randn(hidden_size, input_size + hidden_size) #128, 129
         self.Wi = np.random.randn(hidden_size, input_size + hidden_size)
         self.Wo = np.random.randn(hidden_size, input_size + hidden_size)
         self.Wc = np.random.randn(hidden_size, input_size + hidden_size)
@@ -40,7 +40,7 @@ class LSTM:
             self.concat = np.column_stack((reshaped_prev_hidden_state, x[:, i:i+1]))
 
             # Compute gates
-            self.ft = self.sigmoid(np.dot(self.Wf, self.concat) + self.bf)
+            self.ft = self.sigmoid(np.dot(self.Wf, self.concat) + self.bf) #128, 129 * 129, 1 + 128, 1
             self.it = self.sigmoid(np.dot(self.Wi, self.concat) + self.bi)
             self.ot = self.sigmoid(np.dot(self.Wo, self.concat) + self.bo)
             self.cct = self.tanh(np.dot(self.Wc, self.concat) + self.bc)
