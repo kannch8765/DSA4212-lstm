@@ -113,6 +113,7 @@ class LSTM:
             dit = dc * self.cct * self.it * (1 - self.it)
             dcct = dc * self.it
             dcctt = dcct * (1 - self.cct ** 2)
+            dprev_cell_state = dc * self.ft
 
             # Compute gradient of forget gate
             df = dc * self.prev_cell_state * self.ft * (1 - self.ft)
