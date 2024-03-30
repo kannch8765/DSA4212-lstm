@@ -1,12 +1,6 @@
 import numpy as np
 
-def sigmoid(x):
-    return 1 / (1 + np.exp(-x))
-
-def tanh(x):
-    return np.tanh(x)
-
-class LSTMCell:
+class LSTM_T:
     def __init__(self, input_size, hidden_size):
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -81,3 +75,11 @@ class LSTMCell:
         d_x = np.dot(d_c * f, self.W_f[:, :self.hidden_size].T) + np.dot(d_c * i, self.W_i[:, :self.hidden_size].T) + np.dot(d_c * o * (1 - tanh_c ** 2), self.W_o[:, :self.hidden_size].T)
 
         return d_x, d_h_prev, d_c_prev, dW_f, db_f, dW_i, db_i, dW_c, db_c, dW_o, db_o
+    
+    
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+
+def tanh(x):
+    return np.tanh(x)
+
