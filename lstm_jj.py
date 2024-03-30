@@ -22,8 +22,8 @@ class LSTM:
         self.by = np.zeros((output_size, 1))
 
         # Initialize previous hidden state and cell state
-        self.prev_hidden_state = np.zeros((hidden_size, 1))
-        self.prev_cell_state = np.zeros((hidden_size, 1))
+        self.prev_hidden_state = np.random.randn(hidden_size, 1)
+        self.prev_cell_state = np.random.randn(hidden_size, 1)
 
     def sigmoid(self, x):
         return 1 / (1 + np.exp(-x))
@@ -60,13 +60,13 @@ class LSTM:
             # Update previous hidden state and cell state for next iteration
             self.prev_hidden_state = self.hidden_state
             self.prev_cell_state = self.cell_state
-
+            
         # Return the output of the last step in the sequence
         output = np.dot(self.Wy, self.hidden_state) + self.by
-        return output, hidden_state_sequence[-1], cell_state_sequence[-1]
+        return output, hidden_state_sequence[-1], cell_state_sequence[-1], hidden_state_sequence, cell_state_sequence
     
-    def backward(self, dh_next, dc_next, f, i, c_hat, c, o, tanh_c):
-        # Initialize gradients for each parameter
+    def backward(self, d_output, d_hidden_state, d_cell_state, hidden_state_sequence, cell_state_sequence, learning_rate=0.01):
+        # Initialize gradients for each weight and bias
         dWf = np.zeros_like(self.Wf)
         dWi = np.zeros_like(self.Wi)
         dWo = np.zeros_like(self.Wo)
@@ -77,57 +77,68 @@ class LSTM:
         dbo = np.zeros_like(self.bo)
         dbc = np.zeros_like(self.bc)
         dby = np.zeros_like(self.by)
-        dh_prev = np.zeros_like(dh_next)
-        dc_prev = np.zeros_like(dc_next)
 
-        for t in reversed(range(self.x.shape[1])):
-            hidden_state_sequence = []  # Define hidden_state_sequence variable
-            for t in reversed(range(self.x.shape[1])):
-                reshaped_prev_hidden_state = self.prev_hidden_state.reshape(-1, 1)
-                concat = np.column_stack((reshaped_prev_hidden_state, self.x[:, t:t+1]))
+        # Initialize gradient for hidden state and cell state
+        dh_next = np.zeros_like(d_hidden_state)
+        dc_next = np.zeros_like(d_cell_state)
 
-                # Compute the gradient of the output layer w.r.t. the hidden state
-                dWy += np.dot(dh_next, hidden_state_sequence[t].T)
-                dby += dh_next
+        for i in reversed(range(self.x.shape[1])):
+            # Compute gradients at each step
+            
+            #  Compute gradient of output layer w.r.t. hidden state
+            dWy += np.dot(d_output, hidden_state_sequence[i].T)
+            dby += d_output
 
-                # Compute the gradient of the hidden state w.r.t. the output gate
-                dh = np.dot(self.Wy.T, dh_next) + dh_prev
-                do = dh * tanh_c
-                dot = do * o * (1 - o)
+            # Compute gradient of hidden state w.r.t. output gate
+            dh = np.dot(self.Wy.T, d_output) + dh_next
+            do = dh * self.tanh(cell_state_sequence[i])
+            dot = do * self.ot * (1 - self.ot)
 
-                # Compute the gradient of the cell state and candidate values
-                dc = dc_next + dh * o * (1 - tanh_c ** 2)
-                dcct = dc * i
-            dcct = dcct * (1 - c_hat ** 2)
+            # Compute gradient of hidden state w.r.t. cell state
+            dc = d_cell_state + dh * self.ot * (1 - self.tanh(cell_state_sequence[i]) ** 2)
 
-            # Compute the gradient of the input gate
-            di = dc * c_hat
-            dii = di * i * (1 - i)
+            # Compute gradient of gates
+            dft = dc * self.prev_cell_state * self.ft * (1 - self.ft)
+            dWf += np.dot(dft, self.concat.T)
+            dbf += dft
+            dprev_cell_state = dc * self.ft
 
-            # Define c_prev
-            c_prev = self.prev_cell_state
+            dit = dc * self.cct * self.it * (1 - self.it)
+            dWi += np.dot(dit, self.concat.T)
+            dbi += dit
+            dcct = dc * self.it
+            dcctt = dcct * (1 - self.cct ** 2)
+            dWc += np.dot(dcctt, self.concat.T)
+            dbc += dcctt
 
-            # Compute the gradient of the forget gate
-            df = dc * c_prev
-            dff = df * f * (1 - f)
+            # Compute gradient of forget gate
+            df = dc * self.prev_cell_state * self.ft * (1 - self.ft)
 
-            # Compute the gradient of the cell state
-            dc_prev = dc * f
+            # Compute gradient of input gate
+            di = dc * self.cct * self.it * (1 - self.it)
 
-            # Compute the gradients of the gates
-            dWf += np.dot(dff, concat.T)
-            dbf += dff
-            dWi += np.dot(dii, concat.T)
-            dbi += dii
-            dWo += np.dot(dot, concat.T)
-            dbo += dot
-            dWc += np.dot(dcct, concat.T)
-            dbc += dcct
+            # Compute gradient of previous hidden state
+            dprev_hidden_state = np.dot(df, self.Wf[:, :self.hidden_size].T) \
+                            + np.dot(di, self.Wi[:, :self.hidden_size].T) \
+                            + np.dot(do, self.Wo[:, :self.hidden_size].T) \
+                            + np.dot(dcct, self.Wc[:, :self.hidden_size].T)
+            
+            # Compute gradient of previous cell state
+            dprev_cell_state += dc * self.ft
 
-            # Compute the gradient of the input
-            dx = np.dot(df, self.Wf[:, :self.hidden_size].T) + np.dot(di, self.Wi[:, :self.hidden_size].T) + np.dot(do, self.Wo[:, :self.hidden_size].T) + np.dot(dcct, self.Wc[:, :self.hidden_size].T)
+            # Update weights and biases using gradients & learning rate
+            self.Wf -= learning_rate * dWf
+            self.Wi -= learning_rate * dWi
+            self.Wo -= learning_rate * dWo
+            self.Wc -= learning_rate * dWc
+            self.Wy -= learning_rate * dWy
 
-            # Compute the gradient of the previous hidden state
-            dh_prev = np.dot(df, self.Wf[:, self.hidden_size:].T) + np.dot(di, self.Wi[:, self.hidden_size:].T) + np.dot(do, self.Wo[:, self.hidden_size:].T) + np.dot(dcct, self.Wc[:, self.hidden_size:].T)
+            self.bf -= learning_rate * dbf
+            self.bi -= learning_rate * dbi
+            self.bo -= learning_rate * dbo
+            self.bc -= learning_rate * dbc
+            self.by -= learning_rate * dby
 
-        return dx, dh_prev, dc_prev, dWf, dbf, dWi, dbi, dWo, dbo, dWc, dbc, dWy, dby
+            # Update hidden state and cell state
+            self.prev_hidden_state = hidden_state_sequence[i]
+            self.prev_cell_state = cell_state_sequence[i]
