@@ -93,6 +93,7 @@ class LSTM:
             dby += d_output       # 1, 1
 
             # Compute gradient of hidden state w.r.t. output gate
+            print(dh_next.shape)
             dh = np.dot(self.Wy.T, d_output) + dh_next # 128, 1
             print(d_output.shape)
             print(self.Wy.shape)
