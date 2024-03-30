@@ -24,10 +24,10 @@ def train_val_split(data, train_ratio=0.8):
 def mse_loss(y_true, y_pred):
     return np.mean(np.square(y_true - y_pred))
 
-def train_lstm_model(lstm_model, input_sequences, target_values, num_epochs):
+def train_lstm_model(lstm_model, input_sequences, target_values, num_epochs,hidden_size):
 
-    d_hidden_state = np.zeros((lstm_model.hidden_size, 1))
-    d_cell_state = np.zeros((lstm_model.hidden_size, 1))
+    d_hidden_state = np.zeros((hidden_size, 1))
+    d_cell_state = np.zeros((hidden_size, 1))
     epoch_numbers = []
     losses = []
 
