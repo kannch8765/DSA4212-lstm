@@ -158,3 +158,15 @@ class LSTM:
             dprev_cell_state = dc_next
 
         return dprev_hidden_state, dprev_cell_state
+    
+    def get_params(self):
+        return self.Wf, self.Wi, self.Wo, self.Wc, self.Wy, self.bf, self.bi, self.bo, self.bc, self.by
+    
+    def set_params(self, params):
+        self.Wf, self.Wi, self.Wo, self.Wc, self.Wy, self.bf, self.bi, self.bo, self.bc, self.by = params
+
+def train_val_split(data, train_ratio=0.8):
+    split_index = int(len(data) * train_ratio)
+    training_data = data[:split_index]
+    validation_data = data[split_index:]
+    return training_data, validation_data

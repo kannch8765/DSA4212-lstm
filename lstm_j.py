@@ -169,3 +169,5 @@ class LSTM_JAX:
         output, _, _ = self.forward(x, jnp.zeros((self.hidden_size, 1)), jnp.zeros((self.hidden_size, 1)))
         loss = jnp.sum((output - y) ** 2)
         return loss
+
+    
