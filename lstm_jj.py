@@ -71,7 +71,7 @@ class LSTM:
     
     def backward(self, d_output, d_hidden_state, d_cell_state, 
                  hidden_state_sequence, cell_state_sequence, 
-                 learning_rate=0.01, l2_lambda = 0.01):
+                 learning_rate=0.01, l2_lambda = 0.001):
         # Initialize gradients for each weight and bias
         dWf = np.zeros_like(self.Wf)
         dWi = np.zeros_like(self.Wi)
