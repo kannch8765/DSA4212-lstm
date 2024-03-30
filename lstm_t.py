@@ -1,117 +1,49 @@
 import numpy as np
 
-class LSTM_T:
-    def __init__(self, input_size, hidden_size, output_size):
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+
+def tanh(x):
+    return np.tanh(x)
+
+class LSTMCell:
+    def __init__(self, input_size, hidden_size):
         self.input_size = input_size
         self.hidden_size = hidden_size
-        self.output_size = output_size
 
-        # Initialize weights
-        self.Wf = np.random.randn(hidden_size, input_size + hidden_size)
-        self.Wi = np.random.randn(hidden_size, input_size + hidden_size)
-        self.Wo = np.random.randn(hidden_size, input_size + hidden_size)
-        self.Wc = np.random.randn(hidden_size, input_size + hidden_size)
-        self.Wy = np.random.randn(output_size, hidden_size)
-        self.bf = np.zeros((hidden_size, 1))
-        self.bi = np.zeros((hidden_size, 1))
-        self.bo = np.zeros((hidden_size, 1))
-        self.bc = np.zeros((hidden_size, 1))
-        self.by = np.zeros((output_size, 1))
+        # Weights and biases
+        self.W_f = np.random.randn(input_size + hidden_size, hidden_size)  # Forget gate
+        self.b_f = np.zeros((1, hidden_size))
 
-        # Initialize previous hidden state and cell state
-        self.reset_states()
+        self.W_i = np.random.randn(input_size + hidden_size, hidden_size)  # Input gate
+        self.b_i = np.zeros((1, hidden_size))
 
-    def reset_states(self):
-        self.prev_hidden_state = np.zeros((self.hidden_size, 1))
-        self.prev_cell_state = np.zeros((self.hidden_size, 1))
+        self.W_c = np.random.randn(input_size + hidden_size, hidden_size)  # Candidate values
+        self.b_c = np.zeros((1, hidden_size))
 
-    def sigmoid(self, x):
-        return 1 / (1 + np.exp(-x))
+        self.W_o = np.random.randn(input_size + hidden_size, hidden_size)  # Output gate
+        self.b_o = np.zeros((1, hidden_size))
 
-    def tanh(self, x):
-        return np.tanh(x)
+    def forward(self, x, h_prev, c_prev):
+        # Concatenate input and previous hidden state
+        concat_input = np.concatenate((h_prev, x), axis=1)
 
-    def forward(self, x):
-        self.x = x
+        # Forget gate
+        f = sigmoid(np.dot(concat_input, self.W_f) + self.b_f)
 
-        # Initialize hidden and cell states for the sequence
-        hidden_state_sequence = []
-        cell_state_sequence = []
+        # Input gate
+        i = sigmoid(np.dot(concat_input, self.W_i) + self.b_i)
 
-        for i in range(x.shape[2]):  # Iterate over the sequence length
-            # Reshape and concatenate previous hidden state
-            reshaped_prev_hidden_state = self.prev_hidden_state.reshape(-1, 1)
-            self.concat = np.column_stack((reshaped_prev_hidden_state, x[:, :, i]))
+        # Candidate values
+        c_hat = tanh(np.dot(concat_input, self.W_c) + self.b_c)
 
-            # Compute gates
-            self.ft = self.sigmoid(np.dot(self.Wf, self.concat) + self.bf)
-            self.it = self.sigmoid(np.dot(self.Wi, self.concat) + self.bi)
-            self.ot = self.sigmoid(np.dot(self.Wo, self.concat) + self.bo)
-            self.cct = self.tanh(np.dot(self.Wc, self.concat) + self.bc)
+        # Update cell state
+        c = f * c_prev + i * c_hat
 
-            # Update cell state and hidden state
-            self.cell_state = self.ft * self.prev_cell_state + self.it * self.cct
-            self.hidden_state = self.ot * self.tanh(self.cell_state)
+        # Output gate
+        o = sigmoid(np.dot(concat_input, self.W_o) + self.b_o)
 
-            # Save hidden and cell states for the sequence
-            hidden_state_sequence.append(self.hidden_state)
-            cell_state_sequence.append(self.cell_state)
+        # Update hidden state
+        h = o * tanh(c)
 
-            # Update previous hidden state and cell state for next iteration
-            self.prev_hidden_state = self.hidden_state
-            self.prev_cell_state = self.cell_state
-
-        # Return the output of the last step in the sequence
-        output = np.dot(self.Wy, self.hidden_state) + self.by
-        return output, hidden_state_sequence[-1], cell_state_sequence[-1]
-
-
-    def backward(self, d_output, d_hidden_state, d_cell_state, learning_rate):
-        dWy = np.dot(d_output, self.hidden_state.T)
-        dby = d_output
-        d_hidden_state += np.dot(self.Wy.T, d_output)
-
-        d_ot = d_hidden_state * self.tanh(self.cell_state)
-        d_cell_state += d_hidden_state * self.ot * (1 - self.tanh(self.cell_state) ** 2)
-
-        d_ft = d_cell_state * self.prev_cell_state
-        d_prev_cell_state = d_cell_state * self.ft
-        d_it = d_cell_state * self.cct
-        d_cct = d_cell_state * self.it
-
-        d_cct_raw = d_cct * (1 - self.cct ** 2)
-        d_ft_raw = d_ft * self.ft * (1 - self.ft)
-        d_it_raw = d_it * self.it * (1 - self.it)
-        d_ot_raw = d_ot * self.ot * (1 - self.ot)
-
-        d_Wc = np.dot(d_cct_raw, self.concat.T)
-        d_bc = d_cct_raw
-        d_Wf = np.dot(d_ft_raw, self.concat.T)
-        d_bf = d_ft_raw
-        d_Wi = np.dot(d_it_raw, self.concat.T)
-        d_bi = d_it_raw
-        d_Wo = np.dot(d_ot_raw, self.concat.T)
-        d_bo = d_ot_raw
-
-        d_concat = np.dot(self.Wc.T, d_cct_raw) + np.dot(self.Wf.T, d_ft_raw) + np.dot(self.Wi.T, d_it_raw) + np.dot(
-            self.Wo.T, d_ot_raw)
-        d_prev_hidden_state = d_concat[:self.hidden_size, :]
-        d_x = d_concat[self.hidden_size:, :]
-
-        # Update weights
-        self.Wy -= learning_rate * dWy
-        self.by -= learning_rate * dby
-        self.Wc -= learning_rate * d_Wc
-        self.bc -= learning_rate * d_bc
-        self.Wf -= learning_rate * d_Wf
-        self.bf -= learning_rate * d_bf
-        self.Wi -= learning_rate * d_Wi
-        self.bi -= learning_rate * d_bi
-        self.Wo -= learning_rate * d_Wo
-        self.bo -= learning_rate * d_bo
-
-        # Update previous hidden state and cell state
-        self.prev_hidden_state = self.hidden_state
-        self.prev_cell_state = self.cell_state
-
-        return d_prev_hidden_state, d_x
+        return h, c
