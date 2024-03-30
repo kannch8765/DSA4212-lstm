@@ -155,7 +155,17 @@ class LSTM:
             dprev_cell_state += dc * self.ft
 
             # Update weights and biases using gradients & learning rate
-            
+            self.Wf -= learning_rate * (dWf + l2_lambda * self.Wf)
+            self.Wi -= learning_rate * (dWi + l2_lambda * self.Wi)
+            self.Wo -= learning_rate * (dWo + l2_lambda * self.Wo)
+            self.Wc -= learning_rate * (dWc + l2_lambda * self.Wc)
+            self.Wy -= learning_rate * (dWy + l2_lambda * self.Wy)
+
+            self.bf -= learning_rate * dbf
+            self.bi -= learning_rate * dbi
+            self.bo -= learning_rate * dbo
+            self.bc -= learning_rate * dbc
+            self.by -= learning_rate * dby
 
             # Update hidden state and cell state
             self.prev_hidden_state = hidden_state_sequence[i]
@@ -163,18 +173,6 @@ class LSTM:
 
             dprev_hidden_state = dh_next
             dprev_cell_state = dc_next
-
-        self.Wf -= learning_rate * (dWf + l2_lambda * self.Wf)
-        self.Wi -= learning_rate * (dWi + l2_lambda * self.Wi)
-        self.Wo -= learning_rate * (dWo + l2_lambda * self.Wo)
-        self.Wc -= learning_rate * (dWc + l2_lambda * self.Wc)
-        self.Wy -= learning_rate * (dWy + l2_lambda * self.Wy)
-
-        self.bf -= learning_rate * dbf
-        self.bi -= learning_rate * dbi
-        self.bo -= learning_rate * dbo
-        self.bc -= learning_rate * dbc
-        self.by -= learning_rate * dby
 
         self.adam_optimizer(self.Wf, dWf, 'Wf')
         self.adam_optimizer(self.Wi, dWi, 'Wi')
