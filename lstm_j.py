@@ -90,7 +90,7 @@ class LSTM_JAX:
 
             # Compute gradients for the current step
             d_output = 2 * (self.forward(x[i:i+1], self.prev_hidden_state, self.prev_cell_state)[0] - y[:, i:i+1])
-
+            d_output = d_output.reshape(self.hidden_size, 1)
             dh_next = d_output @ self.Wy.T + dprev_hidden_state
             dc_next = dprev_cell_state
 
