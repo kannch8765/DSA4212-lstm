@@ -1,5 +1,6 @@
 import jax.numpy as jnp
-import jax import grad
+import jax
+from jax import grad
 
 class LSTM_JAX:
     def __init__(self, input_size, hidden_size, output_size):
@@ -7,12 +8,12 @@ class LSTM_JAX:
         self.hidden_size = hidden_size
         self.output_size = output_size
 
-        # Initialize weights
-        self.Wf = jnp.random.randn(hidden_size, input_size + hidden_size)
-        self.Wi = jnp.random.randn(hidden_size, input_size + hidden_size)
-        self.Wo = jnp.random.randn(hidden_size, input_size + hidden_size)
-        self.Wc = jnp.random.randn(hidden_size, input_size + hidden_size)
-        self.Wy = jnp.random.randn(output_size, hidden_size)
+        key = jax.random.PRNGKey(0)  # Initialize a random key
+        self.Wf = jax.random.normal(key, (hidden_size, input_size + hidden_size))
+        self.Wi = jax.random.normal(key, (hidden_size, input_size + hidden_size))
+        self.Wo = jax.random.normal(key, (hidden_size, input_size + hidden_size))
+        self.Wc = jax.random.normal(key, (hidden_size, input_size + hidden_size))
+        self.Wy = jax.random.normal(key, (output_size, hidden_size))
         self.bf = jnp.zeros((hidden_size, 1))
         self.bi = jnp.zeros((hidden_size, 1))
         self.bo = jnp.zeros((hidden_size, 1))
