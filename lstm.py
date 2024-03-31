@@ -111,4 +111,4 @@ class LSTM:
         self.prev_hidden_state = self.hidden_state
         self.prev_cell_state = self.cell_state
 
-        return d_prev_hidden_state, d_x
+        return d_prev_hidden_state, d_prev_cell_state
