@@ -1,13 +1,16 @@
 import numpy as np
 from LSTM_final import LSTM
 
+
 def create_dataset(data, seq_length):
     input_sequences = []
     target_values = []
 
     for i in range(len(data) - seq_length):
-        input_seq = data[i:i+seq_length]  
-        target_value = data[i+seq_length]  # Target value is the temperature of the next day
+        input_seq = data[i : i + seq_length]
+        target_value = data[
+            i + seq_length
+        ]  # Target value is the temperature of the next day
         input_sequences.append(input_seq)
         target_values.append(target_value)
 
@@ -16,16 +19,21 @@ def create_dataset(data, seq_length):
 
     return input_sequences, target_values
 
+
 def train_val_split(data, train_ratio=0.8):
     split_index = int(len(data) * train_ratio)
     training_data = data[:split_index]
     validation_data = data[split_index:]
     return training_data, validation_data
 
+
 def mse_loss(y_true, y_pred):
     return np.mean(np.square(y_true - y_pred))
 
-def train_lstm_model(lstm_model, input_sequences, target_values, num_epochs,hidden_size):
+
+def train_lstm_model(
+    lstm_model, input_sequences, target_values, num_epochs, hidden_size
+):
 
     d_hidden_state = np.zeros((hidden_size, 1))
     d_cell_state = np.zeros((hidden_size, 1))
@@ -41,15 +49,25 @@ def train_lstm_model(lstm_model, input_sequences, target_values, num_epochs,hidd
             sample_target = target_values[i]
 
             # Forward pass
-            outputs, _, _, hidden_state_sequence, cell_state_sequence = lstm_model.forward(sample_input.reshape(1, -1))
+            outputs, _, _, hidden_state_sequence, cell_state_sequence = (
+                lstm_model.forward(sample_input.reshape(1, -1))
+            )
 
             # Compute loss
             loss = mse_loss(sample_target.reshape(-1, 1), outputs)
             epoch_loss += loss
 
             # Backward pass
-            d_output = 2 * (outputs - sample_target.reshape(-1, 1))  # Gradient of MSE loss
-            d_hidden_state, d_cell_state, grads = lstm_model.backward(d_output, d_hidden_state, d_cell_state, hidden_state_sequence, cell_state_sequence)
+            d_output = 2 * (
+                outputs - sample_target.reshape(-1, 1)
+            )  # Gradient of MSE loss
+            d_hidden_state, d_cell_state, grads = lstm_model.backward(
+                d_output,
+                d_hidden_state,
+                d_cell_state,
+                hidden_state_sequence,
+                cell_state_sequence,
+            )
 
         epoch_numbers.append(epoch)
         losses.append(epoch_loss / len(input_sequences))
@@ -57,20 +75,20 @@ def train_lstm_model(lstm_model, input_sequences, target_values, num_epochs,hidd
         # Print average epoch loss
         if epoch % 10 == 0:
             mean_loss = epoch_loss / len(input_sequences)
-            print(f'Epoch {epoch}, Loss: {mean_loss}')
+            print(f"Epoch {epoch}, Loss: {mean_loss}")
 
-        #update with adam optimizer
+        # update with adam optimizer
         if input_sequences.shape[1] == 1:
-            lstm_model.adam_optimizer(lstm_model.Wf, grads['dWf'], 'Wf')
-            lstm_model.adam_optimizer(lstm_model.Wi, grads['dWi'], 'Wi')
-            lstm_model.adam_optimizer(lstm_model.Wo, grads['dWo'], 'Wo')
-            lstm_model.adam_optimizer(lstm_model.Wc, grads['dWc'], 'Wc')
-            lstm_model.adam_optimizer(lstm_model.Wy, grads['dWy'], 'Wy')
-            lstm_model.adam_optimizer(lstm_model.bf, grads['dbf'], 'bf')
-            lstm_model.adam_optimizer(lstm_model.bi, grads['dbi'], 'bi')
-            lstm_model.adam_optimizer(lstm_model.bo, grads['dbo'], 'bo')
-            lstm_model.adam_optimizer(lstm_model.bc, grads['dbc'], 'bc')
-            lstm_model.adam_optimizer(lstm_model.by, grads['dby'], 'by')
+            lstm_model.adam_optimizer(lstm_model.Wf, grads["dWf"], "Wf")
+            lstm_model.adam_optimizer(lstm_model.Wi, grads["dWi"], "Wi")
+            lstm_model.adam_optimizer(lstm_model.Wo, grads["dWo"], "Wo")
+            lstm_model.adam_optimizer(lstm_model.Wc, grads["dWc"], "Wc")
+            lstm_model.adam_optimizer(lstm_model.Wy, grads["dWy"], "Wy")
+            lstm_model.adam_optimizer(lstm_model.bf, grads["dbf"], "bf")
+            lstm_model.adam_optimizer(lstm_model.bi, grads["dbi"], "bi")
+            lstm_model.adam_optimizer(lstm_model.bo, grads["dbo"], "bo")
+            lstm_model.adam_optimizer(lstm_model.bc, grads["dbc"], "bc")
+            lstm_model.adam_optimizer(lstm_model.by, grads["dby"], "by")
 
     return epoch_numbers, losses
 
