@@ -150,6 +150,7 @@ class LSTM:
                             + np.dot(di.T, self.Wi[:, :self.hidden_size]) \
                             + np.dot(do.T, self.Wo[:, :self.hidden_size]) \
                             + np.dot(dcct.T, self.Wc[:, :self.hidden_size])
+            dprev_hidden_state = dprev_hidden_state.T + dh_next
             
             # Compute gradient of previous cell state
             dprev_cell_state += dc * self.ft
@@ -170,15 +171,14 @@ class LSTM:
             # Update hidden state and cell state
             self.prev_hidden_state = hidden_state_sequence[i]
             self.prev_cell_state = cell_state_sequence[i]
-
+            '''
             print(dh_next.shape)
             print(dprev_hidden_state.shape)
             print(dc_next.shape)
             print(dprev_cell_state.shape)
-            
-            dprev_hidden_state = dh_next
-            dprev_cell_state = dc_next
-
+            '''
+            dh_next = dprev_hidden_state
+            dc_next = dprev_cell_state
             
         #store grads in dictionary
             grads = {'dWf': dWf, 'dWi': dWi, 
