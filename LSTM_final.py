@@ -149,7 +149,7 @@ class LSTM:
             dprev_hidden_state = np.dot(df.T, self.Wf[:, :self.hidden_size]) \
                             + np.dot(di.T, self.Wi[:, :self.hidden_size]) \
                             + np.dot(do.T, self.Wo[:, :self.hidden_size]) \
-                            + np.dot(dcct.T, self.Wc[:, :self.hidden_size]) + dh_next
+                            + np.dot(dcct.T, self.Wc[:, :self.hidden_size]) + dh_next.T
             
             # Compute gradient of previous cell state
             dprev_cell_state += dc * self.ft
