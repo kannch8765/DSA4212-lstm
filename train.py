@@ -1,4 +1,5 @@
 import numpy as np
+from LSTM_final import LSTM
 
 def create_dataset(data, seq_length):
     input_sequences = []
@@ -48,7 +49,7 @@ def train_lstm_model(lstm_model, input_sequences, target_values, num_epochs,hidd
 
             # Backward pass
             d_output = 2 * (outputs - sample_target.reshape(-1, 1))  # Gradient of MSE loss
-            d_hidden_state, d_cell_state = lstm_model.backward(d_output, d_hidden_state, d_cell_state, hidden_state_sequence, cell_state_sequence)
+            d_hidden_state, d_cell_state, grads = lstm_model.backward(d_output, d_hidden_state, d_cell_state, hidden_state_sequence, cell_state_sequence)
 
         epoch_numbers.append(epoch)
         losses.append(epoch_loss / len(input_sequences))
@@ -57,6 +58,20 @@ def train_lstm_model(lstm_model, input_sequences, target_values, num_epochs,hidd
         if epoch % 10 == 0:
             mean_loss = epoch_loss / len(input_sequences)
             print(f'Epoch {epoch}, Loss: {mean_loss}')
+
+        #update with adam optimizer
+        if input_sequences.shape[1] == 1:
+            lstm_model.adam_optimizer(lstm_model.Wf, grads['dwf'], 'Wf')
+            lstm_model.adam_optimizer(lstm_model.Wi, grads['dwi'], 'Wi')
+            lstm_model.adam_optimizer(lstm_model.Wo, grads['dwo'], 'Wo')
+            lstm_model.adam_optimizer(lstm_model.Wc, grads['dwc'], 'Wc')
+            lstm_model.adam_optimizer(lstm_model.Wy, grads['dwy'], 'Wy')
+            lstm_model.adam_optimizer(lstm_model.bf, grads['dbf'], 'bf')
+            lstm_model.adam_optimizer(lstm_model.bi, grads['dbi'], 'bi')
+            lstm_model.adam_optimizer(lstm_model.bo, grads['dbo'], 'bo')
+            lstm_model.adam_optimizer(lstm_model.bc, grads['dbc'], 'bc')
+            lstm_model.adam_optimizer(lstm_model.by, grads['dby'], 'by')
+
 
     return epoch_numbers, losses
 

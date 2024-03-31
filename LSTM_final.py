@@ -174,18 +174,16 @@ class LSTM:
             dprev_hidden_state = dh_next
             dprev_cell_state = dc_next
 
-        self.adam_optimizer(self.Wf, dWf, 'Wf')
-        self.adam_optimizer(self.Wi, dWi, 'Wi')
-        self.adam_optimizer(self.Wo, dWo, 'Wo')
-        self.adam_optimizer(self.Wc, dWc, 'Wc')
-        self.adam_optimizer(self.Wy, dWy, 'Wy')
-        self.adam_optimizer(self.bf, dbf, 'bf')
-        self.adam_optimizer(self.bi, dbi, 'bi')
-        self.adam_optimizer(self.bo, dbo, 'bo')
-        self.adam_optimizer(self.bc, dbc, 'bc')
-        self.adam_optimizer(self.by, dby, 'by')   
+        #store grads in dictionary
+            grads = {'dWf': dWf, 'dWi': dWi, 
+                    'dWo': dWo, 'dWc': dWc, 
+                    'dWy': dWy, 'dbf': dbf, 
+                    'dbi': dbi, 'dbo': dbo, 
+                    'dbc': dbc, 'dby': dby, 
+                    'dprev_hidden_state': dprev_hidden_state, 
+                    'dprev_cell_state': dprev_cell_state}
 
-        return dprev_hidden_state, dprev_cell_state
+        return dprev_hidden_state, dprev_cell_state, grads
     
     def adam_optimizer(self, param, grad, param_name):
         self.t += 1
