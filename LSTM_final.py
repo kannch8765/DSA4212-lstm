@@ -171,14 +171,15 @@ class LSTM:
             # Update hidden state and cell state
             self.prev_hidden_state = hidden_state_sequence[i]
             self.prev_cell_state = cell_state_sequence[i]
-            '''
+
             print(dh_next.shape)
             print(dprev_hidden_state.shape)
             print(dc_next.shape)
             print(dprev_cell_state.shape)
-            '''
-            dh_next = dprev_hidden_state
-            dc_next = dprev_cell_state
+
+            dprev_hidden_state = dh_next
+            dprev_cell_state = dc_next
+
             
         #store grads in dictionary
             grads = {'dWf': dWf, 'dWi': dWi, 
